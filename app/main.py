@@ -1,4 +1,5 @@
 import json
+from app.exceptions.httpexception import HttpException
 from app.data_access.core.db import Database
 from app.data_access.models.models import Pokemon, AlchemyEncoder
 from flask import Flask, Response, abort, jsonify, request
@@ -13,24 +14,37 @@ app.db = database.session
 
 @app.errorhandler(404)
 def resource_not_found(exception):
-    """Returns exceptions as part of a json."""
-    return jsonify(error=str(exception)), 404
+    return jsonify({
+        "error": 404,
+        "description": str(exception)
+    }), 404
+
+@app.errorhandler(500)
+def internal_server_error(exception):
+    return jsonify({
+        "error": 500,
+        "description": str(exception)
+    }), 500
 
 @app.route("/pokemon", methods=['GET'])
 def getPokemon():
     try:
         result = app.db.query(Pokemon).all() # pylint: disable=E1101
         return Response(json.dumps(result, cls=AlchemyEncoder), mimetype='application/json')
-    except Exception as exception:
-        abort(404, description=exception)
+    except Exception as e:
+        abort(500, description=e)
 
 @app.route("/pokemon/<int:pokemon_id>", methods=['GET'])
 def getPokemonById(pokemon_id):
     try:
         result = app.db.query(Pokemon).filter(Pokemon.id == pokemon_id).first() # pylint: disable=E1101
+        if result is None:
+            raise HttpException(404, "Pokemon not found")
         return Response(json.dumps(result, cls=AlchemyEncoder), mimetype='application/json')
-    except Exception as exception:
-        abort(404, description=exception)
+    except HttpException as e:
+        abort(404, description=e)
+    except Exception as e:
+        abort(500, description=e)
 
 @app.teardown_appcontext
 def remove_session(*args, **kwargs):

@@ -1,7 +1,6 @@
 # coding: utf-8
 import datetime
 import json
-from json import JSONEncoder
 from sqlalchemy import Column, ForeignKey, Integer, Table, Text
 from sqlalchemy.sql.sqltypes import NullType
 from sqlalchemy.orm import relationship
@@ -10,8 +9,7 @@ from sqlalchemy.ext.declarative import DeclarativeMeta, declarative_base
 Base = declarative_base()
 metadata = Base.metadata
 
-
-class AlchemyEncoder(JSONEncoder):
+class AlchemyEncoder(json.JSONEncoder):
     def default(self, obj): # pylint: disable=E0202
         if isinstance(obj.__class__, DeclarativeMeta):
             # an SQLAlchemy class
@@ -27,38 +25,6 @@ class AlchemyEncoder(JSONEncoder):
             # a json-encodable dict
             return fields
         return json.JSONEncoder.default(self, obj)
-
-
-# class GenericJSONEncoder(JSONEncoder):
-#     def default(self, obj): # pylint: disable=E0202
-#         try:
-#             return super().default(obj)
-#         except TypeError:
-#             pass
-#         cls = type(obj)
-#         result = {
-#             '__custom__': True,
-#             '__module__': cls.__module__,
-#             '__name__': cls.__name__,
-#             'data': obj.__json_encode__ if not hasattr(cls, '__json_encode__') else obj.__json_encode__
-#         }
-#         return result
-
-# class DictMixIn:
-#     """Provides a to_dict method to a SQLAlchemy database model."""
-
-#     def to_dict(self):
-#         """Returns a JSON serializable dictionary from a SQLAlchemy database model."""
-#         a = {
-#             column.name: getattr(self, column.name)
-#             if not isinstance(
-#                 getattr(self, column.name), (datetime.datetime, datetime.date)
-#             )
-#             else getattr(self, column.name).isoformat()
-#             for column in self.__table__.columns
-#         }
-#         return a
-
 
 class Ability(Base):
     __tablename__ = 'ability'
