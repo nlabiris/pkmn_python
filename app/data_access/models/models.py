@@ -7,62 +7,28 @@ from sqlalchemy import Column, ForeignKey, Index, LargeBinary, String, Table, Te
 from sqlalchemy.dialects.mysql import INTEGER, SMALLINT, TINYINT, TIMESTAMP
 from sqlalchemy.orm import relationship
 from sqlalchemy.ext.declarative import declarative_base, DeclarativeMeta
-from sqlalchemy.ext.associationproxy import association_proxy
+from sqlalchemy.ext.associationproxy import association_proxy, AssociationProxy, _AssociationList
 
 Base = declarative_base()
 
-# # Let's make this a class decorator
-# declarative_base = lambda cls: real_declarative_base(cls=cls)
-
-# @declarative_base
-# class Base(object):
-#     """
-#     Add some default properties and methods to the SQLAlchemy declarative base.
-#     """
-
-#     @property
-#     def columns(self):
-#         return [c.name for c in self.__table__.columns]  # pylint: disable=E1101
-
-#     @property
-#     def columnitems(self):
-#         return dict([ (c, getattr(self, c)) for c in self.columns ])
-
-#     def __repr__(self):
-#         return '{}({})'.format(self.__class__.__name__, self.columnitems)
-
-#     def tojson(self):
-#         return self.columnitems
-
-
-# class DictMixIn:
-#     """Provides a to_dict method to a SQLAlchemy database model."""
-
-#     def to_dict(self):
-#         """Returns a JSON serializable dictionary from a SQLAlchemy database model."""
-#         return {
-#             column.name: getattr(self, column.name)
-#             if not isinstance(
-#                 getattr(self, column.name), (datetime, date)
-#             )
-#             else getattr(self, column.name).strftime('%Y-%m-%d %H:%M:%S')
-#             for column in self.__table__.columns
-#         }
 
 def new_alchemy_encoder():
     _visited_objs = []
 
     class AlchemyEncoder(json.JSONEncoder):
-        def default(self, obj): # pylint: disable=E0202
-            if isinstance(obj.__class__, DeclarativeMeta) or isinstance(obj.__class__, datetime):
-                # don't re-visit self
-                if obj in _visited_objs:
-                    return None
-                _visited_objs.append(obj)
+        def default(self, obj):  # pylint: disable=E0202
+            if isinstance(obj.__class__, DeclarativeMeta) or isinstance(obj.__class__, datetime) or not isinstance(obj.__class__, _AssociationList):
+                # don't re-visit self unless it is specified otherwise
+                if obj not in _visited_objs:
+                    _visited_objs.append(obj)
+                else:
+                    if type(obj).__name__ not in models_to_expand():
+                        return None
 
                 # an SQLAlchemy class
                 fields = {}
-                for field in [x for x in dir(obj) if not x.startswith('_') and x != 'metadata' and x != "nature_candidatenatures"]:
+                attributes = obj.__json__() if hasattr(obj, '__json__') else dir(obj)
+                for field in [x for x in attributes if not x.startswith('_') and x not in ['metadata', 'query', 'query_class']]:
                     value = obj.__getattribute__(field)
                     if isinstance(value, bytes):
                         fields[field] = base64.b64encode(value).decode().replace("\n", "")
@@ -76,6 +42,13 @@ def new_alchemy_encoder():
             return json.JSONEncoder.default(self, obj)
 
     return AlchemyEncoder
+
+
+def models_to_expand():
+    return ["EvSpread", "IvSpread", "ContestEffect", "ContestType", "GrowthRate", "ItemFlingEffect",
+            "ItemPocket", "MoveDamageClass", "MoveEffect", "MoveTarget", "PokemonColor", "PokemonHabitat",
+            "PokemonShape", "Region", "SuperContestEffect", "Generation", "ItemCategory", "Stat",
+            "Ability", "Item", "Nature", "Type", "EvolutionChain", "Move", "PokemonSpecy"]
 
 
 class EvSpread(Base):
@@ -447,7 +420,12 @@ class Candidate(Base):
     # it = relationship('Item', secondary="candidate_items", viewonly=True)
     # ivs = relationship('IvSpread', secondary="candidate_iv_spreads", viewonly=True)
     # mov = relationship('Move', secondary="candidate_moves", viewonly=True)
-    natures = relationship('Nature', secondary="candidate_natures")
+    candidate_natures = relationship('CandidateNature', backref="candidate")
+
+    natures = association_proxy("candidate_natures", "nature")
+
+    def __json__(self):
+        return ['id', 'breeding_priority', 'training_priority', 'updated', 'created', 'pokemon', 'candidate_natures']
 
 
 class CandidateAbility(Base):
@@ -464,7 +442,9 @@ class CandidateAbility(Base):
                      server_default=text("CURRENT_TIMESTAMP"))
 
     ability = relationship('Ability')
-    candidate = relationship('Candidate')
+
+    def __init__(self, ability):
+        self.ability = ability
 
 
 class CandidateEvSpread(Base):
@@ -480,8 +460,10 @@ class CandidateEvSpread(Base):
     created = Column(TIMESTAMP, nullable=False,
                      server_default=text("CURRENT_TIMESTAMP"))
 
-    candidate = relationship('Candidate')
     ev_spread = relationship('EvSpread')
+
+    def __init__(self, ev_spread):
+        self.ev_spread = ev_spread
 
 
 class CandidateItem(Base):
@@ -496,8 +478,10 @@ class CandidateItem(Base):
     created = Column(TIMESTAMP, nullable=False,
                      server_default=text("CURRENT_TIMESTAMP"))
 
-    candidate = relationship('Candidate')
     item = relationship('Item')
+
+    def __init__(self, item):
+        self.item = item
 
 
 class CandidateIvSpread(Base):
@@ -513,8 +497,10 @@ class CandidateIvSpread(Base):
     created = Column(TIMESTAMP, nullable=False,
                      server_default=text("CURRENT_TIMESTAMP"))
 
-    candidate = relationship('Candidate')
     iv_spread = relationship('IvSpread')
+
+    def __init__(self, iv_spread):
+        self.iv_spread = iv_spread
 
 
 class CandidateMove(Base):
@@ -529,8 +515,10 @@ class CandidateMove(Base):
     created = Column(TIMESTAMP, nullable=False,
                      server_default=text("CURRENT_TIMESTAMP"))
 
-    candidate = relationship('Candidate')
     move = relationship('Move')
+
+    def __init__(self, move):
+        self.move = move
 
 
 class CandidateNature(Base):
@@ -546,5 +534,7 @@ class CandidateNature(Base):
     created = Column(TIMESTAMP, nullable=False,
                      server_default=text("CURRENT_TIMESTAMP"))
 
-    candidate = relationship('Candidate', backref="nature_candidatenatures")
-    nature = relationship('Nature', backref="candidate_candidatenatures", viewonly=True)
+    nature = relationship('Nature')
+
+    def __init__(self, nature):
+        self.nature = nature
