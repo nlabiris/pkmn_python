@@ -16,7 +16,7 @@ def new_alchemy_encoder():
     _visited_objs = []
 
     class AlchemyEncoder(json.JSONEncoder):
-        def default(self, obj):  # pylint: disable=E0202
+        def default(self, obj):
             if isinstance(obj.__class__, DeclarativeMeta) or isinstance(obj.__class__, datetime) or not isinstance(obj.__class__, _AssociationList):
                 # don't re-visit self unless it is specified otherwise
                 if obj not in _visited_objs:
@@ -415,17 +415,18 @@ class Candidate(Base):
                      server_default=text("CURRENT_TIMESTAMP"))
 
     pokemon = relationship('Pokemon')
-    # abl = relationship('Ability', secondary="candidate_abilities", viewonly=True)
-    # evs = relationship('EvSpread', secondary="candidate_ev_spreads", viewonly=True)
-    # it = relationship('Item', secondary="candidate_items", viewonly=True)
-    # ivs = relationship('IvSpread', secondary="candidate_iv_spreads", viewonly=True)
-    # mov = relationship('Move', secondary="candidate_moves", viewonly=True)
+    candidate_abilities = relationship('CandidateAbility', backref="candidate")
+    # evs = relationship('EvSpread', secondary="candidate_ev_spreads")
+    # it = relationship('Item', secondary="candidate_items")
+    # ivs = relationship('IvSpread', secondary="candidate_iv_spreads")
+    # candidate_moves = relationship('CandidateMove', backref="candidate")
     candidate_natures = relationship('CandidateNature', backref="candidate")
 
+    abilities = association_proxy("candidate_abilities", "ability")
     natures = association_proxy("candidate_natures", "nature")
 
     def __json__(self):
-        return ['id', 'breeding_priority', 'training_priority', 'updated', 'created', 'pokemon', 'candidate_natures']
+        return ["id", "breeding_priority", "training_priority", "updated", "created", "pokemon", "candidate_natures", "candidate_abilities"]
 
 
 class CandidateAbility(Base):
@@ -442,6 +443,9 @@ class CandidateAbility(Base):
                      server_default=text("CURRENT_TIMESTAMP"))
 
     ability = relationship('Ability')
+
+    def __json__(self):
+        return ["id", "candidate_id", "ability_id", "updated", "created", "ability"]
 
     def __init__(self, ability):
         self.ability = ability
@@ -535,6 +539,9 @@ class CandidateNature(Base):
                      server_default=text("CURRENT_TIMESTAMP"))
 
     nature = relationship('Nature')
+
+    def __json__(self):
+        return ["id", "candidate_id", "nature_id", "updated", "created", "nature"]
 
     def __init__(self, nature):
         self.nature = nature
