@@ -50,42 +50,6 @@ def models_to_expand():
             "PokemonShape", "Region", "SuperContestEffect", "Generation", "ItemCategory", "Stat",
             "Ability", "Item", "Nature", "Type", "EvolutionChain", "Move", "PokemonSpecy"]
 
-
-class EvSpread(Base):
-    __tablename__ = 'ev_spread'
-
-    id = Column(INTEGER(11), primary_key=True)
-    hp = Column(TINYINT(3), nullable=False, server_default=text("'0'"))
-    atk = Column(TINYINT(3), nullable=False, server_default=text("'0'"))
-    _def = Column('def', TINYINT(3), nullable=False,
-                  server_default=text("'0'"))
-    spatk = Column(TINYINT(3), nullable=False, server_default=text("'0'"))
-    spdef = Column(TINYINT(3), nullable=False, server_default=text("'0'"))
-    spe = Column(TINYINT(3), nullable=False, server_default=text("'0'"))
-    sum = Column(SMALLINT(5), nullable=False, server_default=text("'0'"))
-    updated = Column(TIMESTAMP, nullable=False, server_default=text(
-        "CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP"))
-    created = Column(TIMESTAMP, nullable=False,
-                     server_default=text("CURRENT_TIMESTAMP"))
-
-
-class IvSpread(Base):
-    __tablename__ = 'iv_spread'
-
-    id = Column(INTEGER(11), primary_key=True)
-    hp = Column(TINYINT(3), nullable=False, server_default=text("'0'"))
-    atk = Column(TINYINT(3), nullable=False, server_default=text("'0'"))
-    _def = Column('def', TINYINT(3), nullable=False,
-                  server_default=text("'0'"))
-    spatk = Column(TINYINT(3), nullable=False, server_default=text("'0'"))
-    spdef = Column(TINYINT(3), nullable=False, server_default=text("'0'"))
-    spe = Column(TINYINT(3), nullable=False, server_default=text("'0'"))
-    updated = Column(TIMESTAMP, nullable=False, server_default=text(
-        "CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP"))
-    created = Column(TIMESTAMP, nullable=False,
-                     server_default=text("CURRENT_TIMESTAMP"))
-
-
 class ContestEffect(Base):
     __tablename__ = 'contest_effects'
     __table_args__ = {'schema': 'pkmn'}
@@ -416,17 +380,22 @@ class Candidate(Base):
 
     pokemon = relationship('Pokemon')
     candidate_abilities = relationship('CandidateAbility', backref="candidate")
-    # evs = relationship('EvSpread', secondary="candidate_ev_spreads")
-    # it = relationship('Item', secondary="candidate_items")
-    # ivs = relationship('IvSpread', secondary="candidate_iv_spreads")
-    # candidate_moves = relationship('CandidateMove', backref="candidate")
+    candidate_ev_spreads = relationship('CandidateEvSpread', backref="candidate")
+    candidate_items = relationship('CandidateItem', backref="candidate")
+    candidate_iv_spreads = relationship('CandidateIvSpread', backref="candidate")
+    candidate_moves = relationship('CandidateMove', backref="candidate")
     candidate_natures = relationship('CandidateNature', backref="candidate")
 
     abilities = association_proxy("candidate_abilities", "ability")
+    items = association_proxy("candidate_items", "item")
+    moves = association_proxy("candidate_moves", "move")
     natures = association_proxy("candidate_natures", "nature")
 
     def __json__(self):
-        return ["id", "breeding_priority", "training_priority", "updated", "created", "pokemon", "candidate_natures", "candidate_abilities"]
+        return ["id", "breeding_priority", "training_priority", "updated", "created",
+                "pokemon", "candidate_abilities", "candidate_ev_spreads",
+                "candidate_items", "candidate_iv_spreads", "candidate_moves",
+                "candidate_natures"]
 
 
 class CandidateAbility(Base):
@@ -457,17 +426,18 @@ class CandidateEvSpread(Base):
     id = Column(INTEGER(11), primary_key=True)
     candidate_id = Column(ForeignKey('candidate.id'),
                           nullable=False, index=True)
-    ev_spread_id = Column(ForeignKey('ev_spread.id'),
-                          nullable=False, index=True)
+    hp = Column(TINYINT(3), nullable=False, server_default=text("'0'"))
+    atk = Column(TINYINT(3), nullable=False, server_default=text("'0'"))
+    _def = Column('def', TINYINT(3), nullable=False,
+                  server_default=text("'0'"))
+    spatk = Column(TINYINT(3), nullable=False, server_default=text("'0'"))
+    spdef = Column(TINYINT(3), nullable=False, server_default=text("'0'"))
+    spe = Column(TINYINT(3), nullable=False, server_default=text("'0'"))
+    sum = Column(SMALLINT(5), nullable=False, server_default=text("'0'"))
     updated = Column(TIMESTAMP, nullable=False, server_default=text(
         "CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP"))
     created = Column(TIMESTAMP, nullable=False,
                      server_default=text("CURRENT_TIMESTAMP"))
-
-    ev_spread = relationship('EvSpread')
-
-    def __init__(self, ev_spread):
-        self.ev_spread = ev_spread
 
 
 class CandidateItem(Base):
@@ -484,6 +454,9 @@ class CandidateItem(Base):
 
     item = relationship('Item')
 
+    def __json__(self):
+        return ["id", "candidate_id", "item_id", "updated", "created", "item"]
+
     def __init__(self, item):
         self.item = item
 
@@ -494,17 +467,17 @@ class CandidateIvSpread(Base):
     id = Column(INTEGER(11), primary_key=True)
     candidate_id = Column(ForeignKey('candidate.id'),
                           nullable=False, index=True)
-    iv_spread_id = Column(ForeignKey('iv_spread.id'),
-                          nullable=False, index=True)
+    hp = Column(TINYINT(3), nullable=False, server_default=text("'0'"))
+    atk = Column(TINYINT(3), nullable=False, server_default=text("'0'"))
+    _def = Column('def', TINYINT(3), nullable=False,
+                  server_default=text("'0'"))
+    spatk = Column(TINYINT(3), nullable=False, server_default=text("'0'"))
+    spdef = Column(TINYINT(3), nullable=False, server_default=text("'0'"))
+    spe = Column(TINYINT(3), nullable=False, server_default=text("'0'"))
     updated = Column(TIMESTAMP, nullable=False, server_default=text(
         "CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP"))
     created = Column(TIMESTAMP, nullable=False,
                      server_default=text("CURRENT_TIMESTAMP"))
-
-    iv_spread = relationship('IvSpread')
-
-    def __init__(self, iv_spread):
-        self.iv_spread = iv_spread
 
 
 class CandidateMove(Base):
@@ -520,6 +493,9 @@ class CandidateMove(Base):
                      server_default=text("CURRENT_TIMESTAMP"))
 
     move = relationship('Move')
+
+    def __json__(self):
+        return ["id", "candidate_id", "move_id", "updated", "created", "move"]
 
     def __init__(self, move):
         self.move = move

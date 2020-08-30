@@ -3,7 +3,7 @@ import sys
 import traceback
 from app.exceptions.httpexception import HttpException
 from app.data_access.core.db import Database
-from app.data_access.models.models import new_alchemy_encoder, CandidateNature, Candidate, Nature, Pokemon, Ability, Item, Move
+from app.data_access.models.models import new_alchemy_encoder, CandidateEvSpread, CandidateIvSpread, CandidateNature, CandidateMove, CandidateItem, CandidateAbility, Candidate, Nature, Pokemon, Ability, Item, Move
 from flask import Flask, Response, abort, jsonify, request
 
 database = Database()
@@ -40,51 +40,88 @@ def addPokemon():
 
     if "pokemon_id" not in body:
         raise HttpException(400, "No Pokemon ID provided")
+    else:
+        pokemon = app.db.query(Pokemon).filter(Pokemon.id == request.json["pokemon_id"]).first()
 
     if "ability_ids" not in body or not body["ability_ids"]:
         raise HttpException(400, "No Ability IDs provided")
+    else:
+        abilities = app.db.query(Ability).filter(Ability.id.in_(request.json["ability_ids"])).all()
 
-    if "nature_ids" not in body or not body["nature_ids"]:
-        raise HttpException(400, "No Nature IDs provided")
+    if "ev_spreads" in body:
+        if not body["ev_spreads"]:
+            raise HttpException(400, "No EV spreads provided")
 
     if "item_ids" in body:
         if not body["item_ids"]:
             raise HttpException(400, "No Item IDs provided")
+        else:
+            items = app.db.query(Item).filter(Item.id.in_(request.json["item_ids"])).all()
+
+    if "iv_spreads" in body:
+        if not body["iv_spreads"]:
+            raise HttpException(400, "No IV spreads provided")
 
     if "move_ids" in body:
         if not body["move_ids"]:
             raise HttpException(400, "No Move IDs provided")
+        else:
+            moves = app.db.query(Move).filter(Move.id.in_(request.json["move_ids"])).all()
+
+    if "nature_ids" not in body or not body["nature_ids"]:
+        raise HttpException(400, "No Nature IDs provided")
+    else:
+        natures = app.db.query(Nature).filter(Nature.id.in_(request.json["nature_ids"])).all()
 
     candidate = Candidate()
-    
-    pokemon = app.db.query(Pokemon).filter(Pokemon.id == request.json["pokemon_id"]).first()
+
     if not pokemon:
         raise HttpException(404, "No Pokemon found with the given ID")
-    candidate.pokemon = pokemon
+    else:
+        candidate.pokemon = pokemon
 
-    for ability_id in request.json["ability_ids"]:
-        ability = app.db.query(Ability).filter(Ability.id == ability_id).first() 
-        if not ability:
-            raise HttpException(404, "No Ability found with the given ID")
-        candidate.abilities.append(ability)
+    if not abilities:
+        raise HttpException(404, "No Abilities found with the given IDs")
+    else:
+        candidate.abilities.extend(abilities)
 
-    for nature_id in request.json["nature_ids"]:
-        nature = app.db.query(Nature).filter(Nature.id == nature_id).first()
-        if not nature:
-            raise HttpException(404, "No Nature found with the given ID")
-        candidate.natures.append(nature)
+    for ev_spread in request.json["ev_spreads"]:
+        ev = CandidateEvSpread()
+        ev.candidate_id = candidate.id
+        ev.hp = ev_spread["hp"]
+        ev.atk = ev_spread["atk"]
+        ev._def = ev_spread["def"]
+        ev.spatk = ev_spread["spatk"]
+        ev.spdef = ev_spread["spdef"]
+        ev.spe = ev_spread["spe"]
+        ev.sum = ev.hp + ev.atk + ev._def + ev.spatk + ev.spdef + ev.spe
+        candidate.candidate_ev_spreads.append(ev)
 
-    for item_id in request.json["item_ids"]:
-        item = app.db.query(Item).filter(Item.id == item_id).first() 
-        if not item:
-            raise HttpException(404, "No Item found with the given ID")
-        candidate.items.append(item)
+    if not items:
+        raise HttpException(404, "No Items found with the given IDs")
+    else:
+        candidate.items.extend(items)
 
-    for move_id in request.json["move_ids"]:
-        move = app.db.query(Move).filter(Move.id == move_id).first() 
-        if not move:
-            raise HttpException(404, "No Move found with the given ID")
-        candidate.moves.append(move)
+    for iv_spread in request.json["iv_spreads"]:
+        iv = CandidateIvSpread()
+        iv.candidate_id = candidate.id
+        iv.hp = iv_spread["hp"]
+        iv.atk = iv_spread["atk"]
+        iv._def = iv_spread["def"]
+        iv.spatk = iv_spread["spatk"]
+        iv.spdef = iv_spread["spdef"]
+        iv.spe = iv_spread["spe"]
+        candidate.candidate_iv_spreads.append(iv)
+
+    if not moves:
+        raise HttpException(404, "No Moves found with the given IDs")
+    else:
+        candidate.moves.extend(moves)
+
+    if not natures:
+        raise HttpException(404, "No Natures found with the given IDs")
+    else:
+        candidate.natures.extend(natures)
 
     app.db.add(candidate)
     app.db.commit()
@@ -99,32 +136,115 @@ def updatePokemon(pokemon_id):
 
     if "pokemon_id" not in body:
         raise HttpException(400, "No Pokemon ID provided")
+    else:
+        pokemon = app.db.query(Pokemon).filter(Pokemon.id == request.json["pokemon_id"]).first()
 
     if "ability_ids" not in body or not body["ability_ids"]:
         raise HttpException(400, "No Ability IDs provided")
+    else:
+        abilities = app.db.query(Ability).filter(Ability.id.in_(request.json["ability_ids"])).all()
 
-    if "nature_ids" not in body or not body["nature_ids"]:
-        raise HttpException(400, "No Nature IDs provided")
+    if "ev_spreads" in body:
+        if not body["ev_spreads"]:
+            raise HttpException(400, "No EV spreads provided")
 
     if "item_ids" in body:
         if not body["item_ids"]:
             raise HttpException(400, "No Item IDs provided")
+        else:
+            items = app.db.query(Item).filter(Item.id.in_(request.json["item_ids"])).all()
+
+    if "iv_spreads" in body:
+        if not body["iv_spreads"]:
+            raise HttpException(400, "No IV spreads provided")
 
     if "move_ids" in body:
         if not body["move_ids"]:
             raise HttpException(400, "No Move IDs provided")
+        else:
+            moves = app.db.query(Move).filter(Move.id.in_(request.json["move_ids"])).all()
+
+    if "nature_ids" not in body or not body["nature_ids"]:
+        raise HttpException(400, "No Nature IDs provided")
+    else:
+        natures = app.db.query(Nature).filter(Nature.id.in_(request.json["nature_ids"])).all()
 
     candidate = app.db.query(Candidate).filter(Candidate.id == pokemon_id).first()
 
-    pokemon = app.db.query(Pokemon).filter(Pokemon.id == request.json["pokemon_id"]).first()
     if not pokemon:
         raise HttpException(404, "No Pokemon found with the given ID")
-    candidate.pokemon = pokemon
-    for nature_id in request.json["nature_ids"]:
-        nature = app.db.query(Nature).filter(Nature.id == nature_id).first()
-        if not nature:
-            raise HttpException(404, "No Nature found with the given ID")
-        candidate.natures.append(nature)
+    else:
+        candidate.pokemon = pokemon
+
+    if not abilities:
+        raise HttpException(404, "No Abilities found with the given IDs")
+    else:
+        for ability in abilities:
+            if not any(abil.ability_id == ability.id for abil in candidate.candidate_abilities):
+                candidate.abilities.append(ability)
+
+    for ev_spread in request.json["ev_spreads"]:
+        if not any(
+            (
+                evs.hp == ev_spread["hp"] and
+                evs.atk == ev_spread["atk"] and
+                evs._def == ev_spread["def"] and
+                evs.spatk == ev_spread["spatk"] and
+                evs.spdef == ev_spread["spdef"] and
+                evs.spe == ev_spread["spe"]
+            ) for evs in candidate.candidate_ev_spreads):
+                ev = CandidateEvSpread()
+                ev.candidate_id = candidate.id
+                ev.hp = ev_spread["hp"]
+                ev.atk = ev_spread["atk"]
+                ev._def = ev_spread["def"]
+                ev.spatk = ev_spread["spatk"]
+                ev.spdef = ev_spread["spdef"]
+                ev.spe = ev_spread["spe"]
+                ev.sum = ev.hp + ev.atk + ev._def + ev.spatk + ev.spdef + ev.spe
+                candidate.candidate_ev_spreads.append(ev)
+
+    if not items:
+        raise HttpException(404, "No Items found with the given IDs")
+    else:
+        for item in items:
+            if not any(itm.item_id == item.id for itm in candidate.candidate_items):
+                candidate.items.append(item)
+
+    for iv_spread in request.json["iv_spreads"]:
+        if not any(
+            (
+                ivs.hp == iv_spread["hp"] and
+                ivs.atk == iv_spread["atk"] and
+                ivs._def == iv_spread["def"] and
+                ivs.spatk == iv_spread["spatk"] and
+                ivs.spdef == iv_spread["spdef"] and
+                ivs.spe == iv_spread["spe"]
+            ) for ivs in candidate.candidate_iv_spreads):
+                iv = CandidateIvSpread()
+                iv.candidate_id = candidate.id
+                iv.hp = iv_spread["hp"]
+                iv.atk = iv_spread["atk"]
+                iv._def = iv_spread["def"]
+                iv.spatk = iv_spread["spatk"]
+                iv.spdef = iv_spread["spdef"]
+                iv.spe = iv_spread["spe"]
+                candidate.candidate_iv_spreads.append(iv)
+
+    if not moves:
+        raise HttpException(404, "No Moves found with the given IDs")
+    else:
+        for move in moves:
+            if not any(mov.move_id == move.id for mov in candidate.candidate_moves):
+                candidate.moves.append(move)
+
+    if not natures:
+        raise HttpException(404, "No Natures found with the given IDs")
+    else:
+        for nature in natures:
+            if not any(nat.nature_id == nature.id for nat in candidate.candidate_natures):
+                candidate.natures.append(nature)
+
     app.db.commit() 
 
     return Response(json.dumps(candidate, cls=new_alchemy_encoder(), check_circular=False), mimetype='application/json')
