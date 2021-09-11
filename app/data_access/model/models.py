@@ -16,7 +16,7 @@ def new_alchemy_encoder():
     _visited_objs = []
 
     class AlchemyEncoder(json.JSONEncoder):
-        def default(self, obj):
+        def default(self, obj): # pylint: disable=method-hidden
             if isinstance(obj.__class__, DeclarativeMeta) or isinstance(obj.__class__, datetime) or not isinstance(obj.__class__, _AssociationList):
                 # don't re-visit self unless it is specified otherwise
                 if obj not in _visited_objs:
@@ -379,12 +379,12 @@ class Candidate(Base):
                      server_default=text("CURRENT_TIMESTAMP"))
 
     pokemon = relationship('Pokemon')
-    candidate_abilities = relationship('CandidateAbility', backref="candidate")
-    candidate_ev_spreads = relationship('CandidateEvSpread', backref="candidate")
-    candidate_items = relationship('CandidateItem', backref="candidate")
-    candidate_iv_spreads = relationship('CandidateIvSpread', backref="candidate")
-    candidate_moves = relationship('CandidateMove', backref="candidate")
-    candidate_natures = relationship('CandidateNature', backref="candidate")
+    candidate_abilities = relationship('CandidateAbility', backref="candidate", cascade="all, delete",)
+    candidate_ev_spreads = relationship('CandidateEvSpread', backref="candidate", cascade="all, delete",)
+    candidate_items = relationship('CandidateItem', backref="candidate", cascade="all, delete",)
+    candidate_iv_spreads = relationship('CandidateIvSpread', backref="candidate", cascade="all, delete",)
+    candidate_moves = relationship('CandidateMove', backref="candidate", cascade="all, delete",)
+    candidate_natures = relationship('CandidateNature', backref="candidate", cascade="all, delete",)
 
     abilities = association_proxy("candidate_abilities", "ability")
     items = association_proxy("candidate_items", "item")
